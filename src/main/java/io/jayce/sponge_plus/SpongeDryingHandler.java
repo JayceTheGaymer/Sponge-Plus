@@ -16,18 +16,21 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.level.BlockEvent;
+import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
-@EventBusSubscriber(modid = Sponge_plus.MODID)
-public class SpongeDryingHandler {
-
-    private static final int DRYING_DELAY_TICKS = 60; // 3 second delay
+@EventBusSubscriber(modid = SpongePlus.MODID)
+public final class SpongeDryingHandler {
 
     private static final Map<GlobalPos, Long> PENDING = new HashMap<>();
+
+    private SpongeDryingHandler() {}
 
     @SubscribeEvent
     public static void onNeighborNotify(BlockEvent.NeighborNotifyEvent event) {
@@ -48,25 +51,35 @@ public class SpongeDryingHandler {
     public static void onServerTick(ServerTickEvent.Post event) {
         if (PENDING.isEmpty()) return;
 
+        List<GlobalPos> due = new ArrayList<>();
         Iterator<Map.Entry<GlobalPos, Long>> iterator = PENDING.entrySet().iterator();
         while (iterator.hasNext()) {
             Map.Entry<GlobalPos, Long> entry = iterator.next();
             GlobalPos globalPos = entry.getKey();
             ServerLevel level = event.getServer().getLevel(globalPos.dimension());
 
-            if (level == null) {
+            if (level == null || level.getGameTime() >= entry.getValue()) {
                 iterator.remove();
-                continue;
+                if (level != null) due.add(globalPos);
             }
-            if (level.getGameTime() < entry.getValue()) continue;
+        }
 
-            iterator.remove();
+        for (GlobalPos globalPos : due) {
+            ServerLevel level = event.getServer().getLevel(globalPos.dimension());
             BlockPos pos = globalPos.pos();
-            // Makes sure neither blocks were broken before the conversion completed.
+            // Reading an unloaded position would force a synchronous chunk load, so skip it instead.
+            if (level == null || !level.isLoaded(pos)) continue;
+
+            // Makes sure neither block was broken before the conversion completed.
             if (level.getBlockState(pos).is(Blocks.WET_SPONGE) && hasDryingNeighbor(level, pos)) {
                 convert(level, pos);
             }
         }
+    }
+
+    @SubscribeEvent
+    public static void onServerStopping(ServerStoppingEvent event) {
+        PENDING.clear();
     }
 
     private static void convert(ServerLevel level, BlockPos pos) {
@@ -80,11 +93,11 @@ public class SpongeDryingHandler {
         double centerY = pos.getY() + 0.5;
         double centerZ = pos.getZ() + 0.5;
 
-        // Top face
+        // Particles for top face
         level.sendParticles(ParticleTypes.WHITE_SMOKE, centerX, pos.getY() + 1.0, centerZ,
                 15, 0.35, 0.1, 0.35, 0.02);
 
-        // The 4 side faces - no bottom, since the drying block is usually right underneath.
+        // Particles for side faces.
         for (Direction direction : Direction.Plane.HORIZONTAL) {
             double faceX = centerX + 0.5 * direction.getStepX();
             double faceZ = centerZ + 0.5 * direction.getStepZ();
@@ -110,15 +123,13 @@ public class SpongeDryingHandler {
 
     private static void schedule(ServerLevel level, BlockPos pos) {
         GlobalPos globalPos = GlobalPos.of(level.dimension(), pos.immutable());
-        PENDING.putIfAbsent(globalPos, level.getGameTime() + DRYING_DELAY_TICKS);
+        PENDING.putIfAbsent(globalPos, level.getGameTime() + Config.dryingDelayTicks());
     }
 
     private static boolean hasDryingNeighbor(LevelAccessor level, BlockPos pos) {
         for (Direction direction : Direction.values()) {
             BlockState neighborState = level.getBlockState(pos.relative(direction));
             if (!isActiveDryingBlock(neighborState)) continue;
-
-            // A campfire directly above the sponge is touching the campfire's bottom - doesn't count.
             if (direction == Direction.UP && neighborState.is(BlockTags.CAMPFIRES)) continue;
 
             return true;
@@ -126,7 +137,7 @@ public class SpongeDryingHandler {
         return false;
     }
 
-    // A block only counts while it's actually hot - an extinguished campfire shouldn't dry sponges.
+    // Stops extinguished campfires from working to dry sponges.
     private static boolean isActiveDryingBlock(BlockState state) {
         if (!state.is(ModTags.DRYING_BLOCKS)) return false;
         return !state.hasProperty(BlockStateProperties.LIT) || state.getValue(BlockStateProperties.LIT);
