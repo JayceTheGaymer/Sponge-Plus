@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "id": "${id}",
+  "version": "${version}",
+
+  "name": "${name}",
+  "description": "${description}",
+  "authors": ["JayceTheGaymer"],
+  "contact": {
+    "homepage": "https://github.com/JayceTheGaymer/Sponge-Plus",
+    "issues": "https://github.com/JayceTheGaymer/Sponge-Plus/issues"
+  },
+
+  "license": "All-Rights-Reserved",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "io.jayce.sponge_plus.SpongePlus"
+    ]
+  },
+  "mixins": [
+    "${id}.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": "*",
+    "fabric-api": ">=${fabricVersion}",
+    "minecraft": ">=${minecraftVersion}"
+  }
+}

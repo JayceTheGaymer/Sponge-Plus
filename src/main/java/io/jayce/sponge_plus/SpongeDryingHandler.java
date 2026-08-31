@@ -4,6 +4,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -13,11 +14,20 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+
+/*? if neoforge {*/
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.level.BlockEvent;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
+/*?}*/
+
+/*? if fabric {*/
+/*import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+*/
+/*?}*/
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -25,30 +35,48 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+/*? if neoforge {*/
 @EventBusSubscriber(modid = SpongePlus.MODID)
+/*?}*/
 public final class SpongeDryingHandler {
 
     private static final Map<GlobalPos, Long> PENDING = new HashMap<>();
 
     private SpongeDryingHandler() {}
 
+    /*? if fabric {*/
+    /*public static void registerFabric() {
+        ServerTickEvents.END_SERVER_TICK.register(SpongeDryingHandler::onServerTick);
+        ServerLifecycleEvents.SERVER_STOPPING.register(server -> onServerStopping());
+    }*/
+    /*?}*/
+
+    /*? if neoforge {*/
     @SubscribeEvent
     public static void onNeighborNotify(BlockEvent.NeighborNotifyEvent event) {
-        LevelAccessor level = event.getLevel();
-        if (!(level instanceof ServerLevel serverLevel)) return;
+        if (event.getLevel() instanceof ServerLevel serverLevel) {
+            handleNeighborChange(serverLevel, event.getPos(), event.getState());
+        }
+    }
+    /*?}*/
 
-        BlockPos pos = event.getPos();
-        BlockState state = event.getState();
-
+    // Entry point for both loaders: NeoForge's NeighborNotifyEvent and Fabric's BlockBehaviour mixin.
+    public static void handleNeighborChange(ServerLevel level, BlockPos pos, BlockState state) {
         if (isActiveDryingBlock(state)) {
-            scheduleNeighboringSponges(serverLevel, pos, state);
-        } else if (state.is(Blocks.WET_SPONGE) && hasDryingNeighbor(serverLevel, pos)) {
-            schedule(serverLevel, pos);
+            scheduleNeighboringSponges(level, pos, state);
+        } else if (state.is(Blocks.WET_SPONGE) && hasDryingNeighbor(level, pos)) {
+            schedule(level, pos);
         }
     }
 
+    /*? if neoforge {*/
     @SubscribeEvent
     public static void onServerTick(ServerTickEvent.Post event) {
+        onServerTick(event.getServer());
+    }
+    /*?}*/
+
+    public static void onServerTick(MinecraftServer server) {
         if (PENDING.isEmpty()) return;
 
         List<GlobalPos> due = new ArrayList<>();
@@ -56,7 +84,7 @@ public final class SpongeDryingHandler {
         while (iterator.hasNext()) {
             Map.Entry<GlobalPos, Long> entry = iterator.next();
             GlobalPos globalPos = entry.getKey();
-            ServerLevel level = event.getServer().getLevel(globalPos.dimension());
+            ServerLevel level = server.getLevel(globalPos.dimension());
 
             if (level == null || level.getGameTime() >= entry.getValue()) {
                 iterator.remove();
@@ -65,7 +93,7 @@ public final class SpongeDryingHandler {
         }
 
         for (GlobalPos globalPos : due) {
-            ServerLevel level = event.getServer().getLevel(globalPos.dimension());
+            ServerLevel level = server.getLevel(globalPos.dimension());
             BlockPos pos = globalPos.pos();
             // Reading an unloaded position would force a synchronous chunk load, so skip it instead.
             if (level == null || !level.isLoaded(pos)) continue;
@@ -77,8 +105,14 @@ public final class SpongeDryingHandler {
         }
     }
 
+    /*? if neoforge {*/
     @SubscribeEvent
     public static void onServerStopping(ServerStoppingEvent event) {
+        onServerStopping();
+    }
+    /*?}*/
+
+    public static void onServerStopping() {
         PENDING.clear();
     }
 
@@ -115,6 +149,8 @@ public final class SpongeDryingHandler {
             if (direction == Direction.DOWN && dryingState.is(BlockTags.CAMPFIRES)) continue;
 
             BlockPos neighborPos = pos.relative(direction);
+            if (!level.hasChunkAt(neighborPos)) continue;
+
             if (level.getBlockState(neighborPos).is(Blocks.WET_SPONGE)) {
                 schedule(level, neighborPos);
             }
@@ -128,7 +164,11 @@ public final class SpongeDryingHandler {
 
     private static boolean hasDryingNeighbor(LevelAccessor level, BlockPos pos) {
         for (Direction direction : Direction.values()) {
-            BlockState neighborState = level.getBlockState(pos.relative(direction));
+            BlockPos neighborPos = pos.relative(direction);
+            // A neighbor can sit in an adjacent chunk that is not loaded, and reading it would load that chunk.
+            if (!level.hasChunkAt(neighborPos)) continue;
+
+            BlockState neighborState = level.getBlockState(neighborPos);
             if (!isActiveDryingBlock(neighborState)) continue;
             if (direction == Direction.UP && neighborState.is(BlockTags.CAMPFIRES)) continue;
 
