@@ -1,6 +1,6 @@
 # Sponge Plus
 
-A Minecraft (NeoForge) mod that improves on base sponge mechanics.
+A Minecraft (NeoForge and Fabric) mod that improves on base sponge mechanics. Supports 1.21.1 and 26.2, open a GitHub issue if you would like me to look into another version to add.
 
 ## Summary
 

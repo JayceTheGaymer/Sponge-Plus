@@ -1,5 +1,34 @@
-# Project exclude paths
-/.gradle/
-/build/
+# minecraft
+run/
+
+# gradle
+.gradle/
+build/
+**/build/
+out/
+classes/
+versions/*-*/**
+!gradle-wrapper.jar
+.kotlin/
+
+# idea
 /.idea/
-/run/
+*.iml
+*.ipr
+*.iws
+
+# vscode
+.settings/
+.vscode/
+bin/
+.classpath
+.project
+
+# macos
+*.DS_Store
+
+# java
+hs_err_*.log
+replay_*.log
+*.hprof
+*.jfr
