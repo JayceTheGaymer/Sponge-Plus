@@ -34,6 +34,8 @@ public class SpongePlus {
     public void onInitialize() {
         Config.init();
         SpongeDryingHandler.registerFabric();
+        SpongeWeatherHandler.registerFabric();
+        SpongeLootHandler.registerFabric();
     }*/
     /*?}*/
 }

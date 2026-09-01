@@ -62,6 +62,9 @@ public final class SpongeDryingHandler {
 
     // Entry point for both loaders: NeoForge's NeighborNotifyEvent and Fabric's BlockBehaviour mixin.
     public static void handleNeighborChange(ServerLevel level, BlockPos pos, BlockState state) {
+        // SpongeWeatherHandler reuses this signal to find sponges, so it needs no hook of its own.
+        SpongeWeatherHandler.trackNearby(level, pos, state);
+
         if (isActiveDryingBlock(state)) {
             scheduleNeighboringSponges(level, pos, state);
         } else if (state.is(Blocks.WET_SPONGE) && hasDryingNeighbor(level, pos)) {
@@ -116,7 +119,7 @@ public final class SpongeDryingHandler {
         PENDING.clear();
     }
 
-    private static void convert(ServerLevel level, BlockPos pos) {
+    static void convert(ServerLevel level, BlockPos pos) {
         level.setBlock(pos, Blocks.SPONGE.defaultBlockState(), Block.UPDATE_ALL);
         level.playSound(null, pos, SoundEvents.LAVA_EXTINGUISH, SoundSource.BLOCKS, 1.0F, 1.0F);
         spawnSteam(level, pos);

@@ -21,6 +21,6 @@ side = "BOTH"
 [[dependencies."${id}"]]
 modId = "minecraft"
 type = "required"
-versionRange = "[${minecraftVersion},)"
+versionRange = "[${minecraftVersion}]"
 ordering = "NONE"
 side = "BOTH"
