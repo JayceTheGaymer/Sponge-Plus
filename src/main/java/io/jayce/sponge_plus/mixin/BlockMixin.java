@@ -1,7 +1,7 @@
 package io.jayce.sponge_plus.mixin;
 
 /*? if fabric {*/
-/*import io.jayce.sponge_plus.SpongeDryingHandler;
+/*import io.jayce.sponge_plus.SpongeTracker;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
@@ -29,18 +29,20 @@ public abstract class BlockMixin {
 
     /*? if fabric && <26.2 {*/
     /*@Inject(method = "neighborChanged", at = @At("HEAD"))
-    private void sponge_plus$onNeighborChanged(BlockState state, Level level, BlockPos pos, Block neighborBlock, BlockPos neighborPos, boolean movedByPiston, CallbackInfo ci) {
+    private void sponge_plus$onNeighborChanged(BlockState state, Level level, BlockPos pos, Block neighborBlock,
+            BlockPos neighborPos, boolean movedByPiston, CallbackInfo ci) {
         if (level instanceof ServerLevel serverLevel) {
-            SpongeDryingHandler.handleNeighborChange(serverLevel, pos, state);
+            SpongeTracker.onNeighborChange(serverLevel, pos, state);
         }
     }*/
     /*?}*/
 
     /*? if fabric && >=26.2 {*/
     /*@Inject(method = "neighborChanged", at = @At("HEAD"))
-    private void sponge_plus$onNeighborChanged(BlockState state, Level level, BlockPos pos, Block neighborBlock, Orientation orientation, boolean movedByPiston, CallbackInfo ci) {
+    private void sponge_plus$onNeighborChanged(BlockState state, Level level, BlockPos pos, Block neighborBlock,
+            Orientation orientation, boolean movedByPiston, CallbackInfo ci) {
         if (level instanceof ServerLevel serverLevel) {
-            SpongeDryingHandler.handleNeighborChange(serverLevel, pos, state);
+            SpongeTracker.onNeighborChange(serverLevel, pos, state);
         }
     }*/
     /*?}*/

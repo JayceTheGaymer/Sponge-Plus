@@ -82,6 +82,7 @@ public class Config {
             try (InputStream in = Files.newInputStream(path)) {
                 properties.load(in);
             } catch (IOException ignored) {
+                // A missing or unreadable config file just falls back to the defaults set above.
             }
         }
 
@@ -94,10 +95,12 @@ public class Config {
         properties.setProperty("rainWettingDelayTicks", String.valueOf(rainWettingDelayTicks));
         try (OutputStream out = Files.newOutputStream(path)) {
             properties.store(out, "dryingDelayTicks: how long a wet sponge must sit next to a drying block before it dries, in ticks. "
-                    + "sunlightDryingDelayTicks: how long a wet sponge must sit continuously under open sky during the day before it dries, in ticks. "
+                    + "sunlightDryingDelayTicks: how long a wet sponge must sit continuously under open sky "
+                    + "during the day before it dries, in ticks. "
                     + "rainWettingDelayTicks: how long a dry sponge must sit continuously in the rain under open sky before it turns wet, in ticks. "
                     + "20 ticks = 1 second.");
         } catch (IOException ignored) {
+            // A failed write just means the file keeps its previous values; nothing to recover here.
         }
     }
 
